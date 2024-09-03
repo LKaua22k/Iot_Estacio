@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor de Energia Inteligente</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            margin-top: 50px;
+        }
+        .card {
+            margin-bottom: 20px;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+        }
+        .alerta {
+            display: none;
+            color: red;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 class="text-center">Monitor de Energia Inteligente</h1>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Consumo Atual</h5>
+                    <p class="card-text" id="consumo_atual">Carregando...</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Média de Consumo</h5>
+                    <p class="card-text" id="media_consumo">Carregando...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Histórico de Consumo</h5>
+                    <div class="chart-container">
+                        <canvas id="grafico_consumo"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Distribuição de Consumo</h5>
+                    <div class="chart-container">
+                        <canvas id="grafico_pizza"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="alerta" id="alerta">Alerta: Consumo de energia ultrapassou o limite!</div>
+</div>
+
+<script>
+    function atualizarDados() {
+        fetch('/dados_consumo')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('consumo_atual').innerText = data.consumo_atual + ' Watts';
+            document.getElementById('media_consumo').innerText = data.media_consumo.toFixed(2) + ' Watts';
+
+            atualizarGrafico(data.historico_consumo);
+            atualizarGraficoPizza(data.historico_consumo);
+            
+            if (data.consumo_atual > 400) {
+                document.getElementById('alerta').style.display = 'block';
+            } else {
+                document.getElementById('alerta').style.display = 'none';
+            }
+        });
+    }
+
+    function atualizarGrafico(historico) {
+        const ctx = document.getElementById('grafico_consumo').getContext('2d');
+        if (window.myChart) {
+            window.myChart.destroy();
+        }
+        window.myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: historico.map((_, i) => i + 1),
+                datasets: [{
+                    label: 'Consumo em Watts',
+                    data: historico,
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    function atualizarGraficoPizza(historico) {
+        const ctx = document.getElementById('grafico_pizza').getContext('2d');
+        if (window.myPieChart) {
+            window.myPieChart.destroy();
+        }
+        window.myPieChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Consumo baixo', 'Consumo médio', 'Consumo alto'],
+                datasets: [{
+                    data: [
+                        historico.filter(value => value < 150).length,
+                        historico.filter(value => value >= 150 && value <= 300).length,
+                        historico.filter(value => value > 300).length
+                    ],
+                    backgroundColor: ['rgba(75, 192, 192, 0.2)', 'rgba(153, 102, 255, 0.2)', 'rgba(255, 99, 132, 0.2)'],
+                    borderColor: ['rgba(75, 192, 192, 1)', 'rgba(153, 102, 255, 1)', 'rgba(255, 99, 132, 1)'],
+                    borderWidth: 1
+                }]
+            }
+        });
+    }
+
+    setInterval(atualizarDados, 5000);  // Atualiza a cada 5 segundos
+    atualizarDados();  // Atualiza imediatamente ao carregar a página
+</script>
+
+</body>
+</html>
